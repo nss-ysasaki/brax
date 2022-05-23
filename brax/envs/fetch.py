@@ -458,6 +458,66 @@ _SYSTEM_CONFIG = """
     first: "Back Left Lower"
     second: "Ground"
   }
+  collide_include {
+    first: "Front Right Lower"
+    second: "Obstacle 1"
+  }
+  collide_include {
+    first: "Front Left Lower"
+    second: "Obstacle 1"
+  }
+  collide_include {
+    first: "Front Right Upper"
+    second: "Obstacle 1"
+  }
+  collide_include {
+    first: "Front Left Upper"
+    second: "Obstacle 1"
+  }
+  collide_include {
+    first: "Shoulders"
+    second: "Obstacle 1"
+  }
+  collide_include {
+    first: "Front Right Lower"
+    second: "Obstacle 2"
+  }
+  collide_include {
+    first: "Front Left Lower"
+    second: "Obstacle 2"
+  }
+  collide_include {
+    first: "Front Right Upper"
+    second: "Obstacle 2"
+  }
+  collide_include {
+    first: "Front Left Upper"
+    second: "Obstacle 2"
+  }
+  collide_include {
+    first: "Shoulders"
+    second: "Obstacle 2"
+  }
+  collide_include {
+    first: "Front Right Lower"
+    second: "Obstacle 3"
+  }
+  collide_include {
+    first: "Front Left Lower"
+    second: "Obstacle 3"
+  }
+  collide_include {
+    first: "Front Right Upper"
+    second: "Obstacle 3"
+  }
+  collide_include {
+    first: "Front Left Upper"
+    second: "Obstacle 3"
+  }
+  collide_include {
+    first: "Shoulders"
+    second: "Obstacle 3"
+  }
   dt: 0.02
   substeps: 4
   """
