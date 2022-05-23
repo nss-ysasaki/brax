@@ -133,6 +133,7 @@ class Fetch(env.Env):
 
   def _move_target(self) -> jp.ndarray:
     """Returns the location of the next waypoint."""
+    self.next_waypoint += 1
     i = self.next_waypoint % len(self.waypoints)
     target = self.waypoints[i].transpose()
     return target
