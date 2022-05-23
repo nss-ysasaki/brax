@@ -28,16 +28,10 @@ class Fetch(env.Env):
   def __init__(self, legacy_spring=False, **kwargs):
     config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
     super().__init__(config=config, **kwargs)
-    self.target_idx = self.sys.body.index['Target']
     self.torso_idx = self.sys.body.index['Torso']
-    self.target_radius = 2
-    self.target_distance = 15
 
   def reset(self, rng: jp.ndarray) -> env.State:
     qp = self.sys.default_qp()
-    rng, target = self._random_target(rng)
-    pos = jp.index_update(qp.pos, self.target_idx, target)
-    qp = qp.replace(pos=pos)
     info = self.sys.info(qp)
     obs = self._get_obs(qp, info)
     reward, done, zero = jp.zeros(3)
@@ -55,12 +49,9 @@ class Fetch(env.Env):
     qp, info = self.sys.step(state.qp, action)
     obs = self._get_obs(qp, info)
 
-    # small reward for torso moving towards target
+    # big reward for torso moving forward
     torso_delta = qp.pos[self.torso_idx] - state.qp.pos[self.torso_idx]
-    target_rel = qp.pos[self.target_idx] - qp.pos[self.torso_idx]
-    target_dist = jp.norm(target_rel)
-    target_dir = target_rel / (1e-6 + target_dist)
-    moving_to_target = .1 * jp.dot(torso_delta, target_dir)
+    torso_speed = 1.25 * jp.norm(torso_delta) / self.sys.config.dt
 
     # small reward for torso being up
     up = jp.array([0., 0., 1.])
@@ -70,28 +61,13 @@ class Fetch(env.Env):
     # small reward for torso height
     torso_height = .1 * self.sys.config.dt * qp.pos[0, 2]
 
-    # big reward for reaching target and facing it
-    fwd = jp.array([1., 0., 0.])
-    torso_fwd = math.rotate(fwd, qp.rot[self.torso_idx])
-    torso_facing = jp.dot(target_dir, torso_fwd)
-    target_hit = target_dist < self.target_radius
-    target_hit = jp.where(target_hit, jp.float32(1), jp.float32(0))
-    weighted_hit = target_hit * torso_facing
-
-    reward = torso_height + moving_to_target + torso_is_up + weighted_hit
+    reward = torso_speed + torso_height + torso_is_up
 
     state.metrics.update(
-        hits=target_hit,
-        weightedHits=weighted_hit,
-        movingToTarget=moving_to_target,
+        torsoSpeed=torso_speed,
         torsoIsUp=torso_is_up,
         torsoHeight=torso_height)
 
-    # teleport any hit targets
-    rng, target = self._random_target(state.info['rng'])
-    target = jp.where(target_hit, target, qp.pos[self.target_idx])
-    pos = jp.index_update(qp.pos, self.target_idx, target)
-    qp = qp.replace(pos=pos)
     state.info.update(rng=rng)
     return state.replace(qp=qp, obs=obs, reward=reward)
 
@@ -106,10 +82,6 @@ class Fetch(env.Env):
     pos_local = v_inv_rotate(pos_local, qp.rot[self.torso_idx])
     vel_local = v_inv_rotate(qp.vel, qp.rot[self.torso_idx])
 
-    target_local = pos_local[self.target_idx]
-    target_local_mag = jp.reshape(jp.norm(target_local), -1)
-    target_local_dir = target_local / (1e-6 + target_local_mag)
-
     pos_local = jp.reshape(pos_local, -1)
     vel_local = jp.reshape(vel_local, -1)
 
@@ -120,17 +92,6 @@ class Fetch(env.Env):
         torso_fwd, torso_up, target_local_mag, target_local_dir, pos_local,
         vel_local, contacts
     ])
-
-  def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
-    """Returns a target location in a random circle on xz plane."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    dist = self.target_radius + self.target_distance * jp.random_uniform(rng1)
-    ang = jp.pi * 2. * jp.random_uniform(rng2)
-    target_x = dist * jp.cos(ang)
-    target_y = dist * jp.sin(ang)
-    target_z = 1.0
-    target = jp.array([target_x, target_y, target_z]).transpose()
-    return rng, target
 
 
 _SYSTEM_CONFIG = """
@@ -248,11 +209,6 @@ _SYSTEM_CONFIG = """
   bodies {
     name: "Ground"
     colliders { plane {} }
-    frozen { all: true }
-  }
-  bodies {
-    name: "Target"
-    colliders { sphere { radius: 2 }}
     frozen { all: true }
   }
   joints {
@@ -551,11 +507,6 @@ bodies {
 bodies {
   name: "Ground"
   colliders { plane {} }
-  frozen { all: true }
-}
-bodies {
-  name: "Target"
-  colliders { sphere { radius: 2 }}
   frozen { all: true }
 }
 joints {
