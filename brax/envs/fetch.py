@@ -117,6 +117,7 @@ class Fetch(env.Env):
     #target = jp.where(target_hit, target, qp.pos[self.target_idx])
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
+    print(f"next_waypoint: {self.next_waypoint}")
     return state.replace(qp=qp, obs=obs, reward=reward)
 
   def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
