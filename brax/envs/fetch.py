@@ -47,8 +47,9 @@ class Fetch(env.Env):
     qp, info = self.sys.step(state.qp, action)
     obs = self._get_obs(qp, info)
 
-    # big reward for torso moving forward
+    # big reward for torso moving forward (along x axis)
     torso_delta = qp.pos[self.torso_idx] - state.qp.pos[self.torso_idx]
+    torso_delta = torso_delta * jp.array([1, 0, 0])
     torso_speed = 1.25 * jp.norm(torso_delta) / self.sys.config.dt
 
     # small reward for torso being up
