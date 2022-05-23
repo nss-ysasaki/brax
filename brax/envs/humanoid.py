@@ -61,7 +61,7 @@ class Humanoid(env.Env):
     pos_before = state.qp.pos[:-1]  # ignore floor at last index
     pos_after = qp.pos[:-1]  # ignore floor at last index
     # Punish if the person is away from the origin
-    digression_cost = -jp.linalg.norm(pos_after - jp.zeros(2))
+    digression_cost = -jp.norm(pos_after - jp.zeros(2))
     quad_ctrl_cost = .01 * jp.sum(jp.square(action))
     # can ignore contact cost, see: https://github.com/openai/gym/issues/1541
     quad_impact_cost = jp.float32(0)
