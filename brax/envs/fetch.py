@@ -21,7 +21,6 @@ from brax import jumpy as jp
 from brax import math
 from brax.envs import env
 import jax.numpy as jnp
-import jax.experimental.host_callback as hcb
 
 
 class Fetch(env.Env):
