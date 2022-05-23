@@ -270,13 +270,13 @@ _SYSTEM_CONFIG = """
     name: "Obstacles"
     colliders {
       position { x: 0. y: 5 z: 0 }
-      capsule { radius: 1. length: 1. }
+      capsule { radius: .25 length: 1. }
       color: "blue"
     }
     colliders {
       position { x: 0. y: 15 z: 0 }
-      capsule { radius: 1. length: 3. }
-      rotation { x: 90 }
+      capsule { radius: .5 length: 5. }
+      rotation { x: 90 y: 90}
       color: "blue"
     }
     frozen { all: true }
@@ -478,6 +478,30 @@ _SYSTEM_CONFIG = """
   }
   collide_include {
     first: "Shoulders"
+    second: "Obstacles"
+  }
+  collide_include {
+    first: "Torso"
+    second: "Obstacles"
+  }
+  collide_include {
+    first: "Hips"
+    second: "Obstacles"
+  }
+  collide_include {
+    first: "Back Right Lower"
+    second: "Obstacles"
+  }
+  collide_include {
+    first: "Back Left Lower"
+    second: "Obstacles"
+  }
+  collide_include {
+    first: "Back Right Upper"
+    second: "Obstacles"
+  }
+  collide_include {
+    first: "Back Left Upper"
     second: "Obstacles"
   }
   dt: 0.02
