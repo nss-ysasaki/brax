@@ -32,10 +32,21 @@ class Fetch(env.Env):
     self.torso_idx = self.sys.body.index['Torso']
     self.target_radius = 2
     self.target_distance = 15
+    self.next_waypoint = 0
+    self.waypoints = jp.array([
+        [0, 10, 0,],
+        [0, 20, 0,],
+        [5, 25, 0,],
+        [10, 20, 0,],
+        [10, 10, 0,],
+        [10, 0, 0,],
+        [5, -5, 0,],
+        [0, 0, 0,],
+    ])
 
   def reset(self, rng: jp.ndarray) -> env.State:
     qp = self.sys.default_qp()
-    rng, target = self._random_target(rng)
+    target = self._move_target()
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
     info = self.sys.info(qp)
@@ -88,7 +99,7 @@ class Fetch(env.Env):
         torsoHeight=torso_height)
 
     # teleport any hit targets
-    rng, target = self._random_target(state.info['rng'])
+    rng, target = self._move_target(state.info['rng'])
     target = jp.where(target_hit, target, qp.pos[self.target_idx])
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
@@ -121,16 +132,11 @@ class Fetch(env.Env):
         vel_local, contacts
     ])
 
-  def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
-    """Returns a target location in a random circle on xz plane."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    dist = self.target_radius + self.target_distance * jp.random_uniform(rng1)
-    ang = jp.pi * 2. * jp.random_uniform(rng2)
-    target_x = dist * jp.cos(ang)
-    target_y = dist * jp.sin(ang)
-    target_z = 1.0
-    target = jp.array([target_x, target_y, target_z]).transpose()
-    return rng, target
+  def _move_target(self) -> jp.ndarray:
+    """Returns the location of the next waypoint."""
+    i = self.next_waypoint % len(self.waypoints)
+    target = self.waypoints[i].transpose()
+    return target
 
 
 _SYSTEM_CONFIG = """
