@@ -112,7 +112,7 @@ class Fetch(env.Env):
 
     # teleport any hit targets
     self.next_waypoint = jp.where(
-        target_hit, self.next_waypoint, self.next_waypoint + 1)
+        target_hit, self.next_waypoint+1, self.next_waypoint)
     target = self._get_target_position()
     #target = jp.where(target_hit, target, qp.pos[self.target_idx])
     pos = jp.index_update(qp.pos, self.target_idx, target)
