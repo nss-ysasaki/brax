@@ -32,6 +32,7 @@ class Fetch(env.Env):
     self.torso_idx = self.sys.body.index['Torso']
     self.target_radius = 2
     self.target_distance = 15
+    self.lap_time = jp.float32(0.)
     self.next_waypoint = 0
     self.waypoints = jp.array([
         [0, 10, 0,],
@@ -77,10 +78,10 @@ class Fetch(env.Env):
     # small reward for torso being up
     up = jp.array([0., 0., 1.])
     torso_up = math.rotate(up, qp.rot[self.torso_idx])
-    torso_is_up = 1. * self.sys.config.dt * jp.dot(torso_up, up)
+    torso_is_up = .1 * self.sys.config.dt * jp.dot(torso_up, up)
 
     # small reward for torso height
-    torso_height = 1. * self.sys.config.dt * qp.pos[0, 2]
+    torso_height = .1 * self.sys.config.dt * qp.pos[0, 2]
 
     # big reward for reaching target and facing it
     fwd = jp.array([1., 0., 0.])
@@ -90,7 +91,13 @@ class Fetch(env.Env):
     target_hit = jp.where(target_hit, jp.float32(1), jp.float32(0))
     weighted_hit = target_hit * torso_facing
 
-    reward = torso_height + moving_to_target + torso_is_up + weighted_hit
+    # penalize if the dog takes too long to reach the target 
+    self.lap_time = jp.where(
+        target_hit, jp.float32(0), self.lap_time + self.sys.config.dt)
+    lap_penalty = 1. * self.lap_time * self.sys.config.dt
+
+    reward = torso_height + moving_to_target + torso_is_up + weighted_hit \
+        - lap_penalty
 
     state.metrics.update(
         hits=target_hit,
