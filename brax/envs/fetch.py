@@ -267,18 +267,10 @@ _SYSTEM_CONFIG = """
     frozen { all: true }
   }
   bodies {
-    name: "Obstacle 1"
+    name: "Obstacles"
     colliders { position { x:0.2 y:3 z:0 } sphere { radius: 0.1 }}
-    frozen { all: true }
-  }
-  bodies {
-    name: "Obstacle 2"
     colliders { position { x:-0.1 y:6 z:0 } sphere { radius: 0.25 }}
-    frozen { all: true }
-  }
-  bodies {
-    name: "Obstacle 3"
-    colliders { position { x:1 y:11 z:0 } sphere { radius: 2 }}
+    colliders { position { x:1 y:11 z:0 } sphere { radius: 1 }}
     frozen { all: true }
   }
   joints {
@@ -460,63 +452,23 @@ _SYSTEM_CONFIG = """
   }
   collide_include {
     first: "Front Right Lower"
-    second: "Obstacle 1"
+    second: "Obstacles"
   }
   collide_include {
     first: "Front Left Lower"
-    second: "Obstacle 1"
+    second: "Obstacles"
   }
   collide_include {
     first: "Front Right Upper"
-    second: "Obstacle 1"
+    second: "Obstacles"
   }
   collide_include {
     first: "Front Left Upper"
-    second: "Obstacle 1"
+    second: "Obstacles"
   }
   collide_include {
     first: "Shoulders"
-    second: "Obstacle 1"
-  }
-  collide_include {
-    first: "Front Right Lower"
-    second: "Obstacle 2"
-  }
-  collide_include {
-    first: "Front Left Lower"
-    second: "Obstacle 2"
-  }
-  collide_include {
-    first: "Front Right Upper"
-    second: "Obstacle 2"
-  }
-  collide_include {
-    first: "Front Left Upper"
-    second: "Obstacle 2"
-  }
-  collide_include {
-    first: "Shoulders"
-    second: "Obstacle 2"
-  }
-  collide_include {
-    first: "Front Right Lower"
-    second: "Obstacle 3"
-  }
-  collide_include {
-    first: "Front Left Lower"
-    second: "Obstacle 3"
-  }
-  collide_include {
-    first: "Front Right Upper"
-    second: "Obstacle 3"
-  }
-  collide_include {
-    first: "Front Left Upper"
-    second: "Obstacle 3"
-  }
-  collide_include {
-    first: "Shoulders"
-    second: "Obstacle 3"
+    second: "Obstacles"
   }
   dt: 0.02
   substeps: 4
@@ -645,18 +597,10 @@ bodies {
   frozen { all: true }
 }
 bodies {
-  name: "Obstacle 1"
+  name: "Obstacles"
   colliders { position { x:0.2 y:3 z:0 } sphere { radius: 0.1 }}
-  frozen { all: true }
-}
-bodies {
-  name: "Obstacle 2"
   colliders { position { x:-0.1 y:6 z:0 } sphere { radius: 0.25 }}
-  frozen { all: true }
-}
-bodies {
-  name: "Obstacle 3"
-  colliders { position { x:1 y:11 z:0 } sphere { radius: 2 }}
+  colliders { position { x:1 y:11 z:0 } sphere { radius: 1 }}
   frozen { all: true }
 }
 joints {
@@ -846,6 +790,26 @@ collide_include {
 collide_include {
   first: "Back Left Lower"
   second: "Ground"
+}
+collide_include {
+  first: "Front Right Lower"
+  second: "Obstacles"
+}
+collide_include {
+  first: "Front Left Lower"
+  second: "Obstacles"
+}
+collide_include {
+  first: "Front Right Upper"
+  second: "Obstacles"
+}
+collide_include {
+  first: "Front Left Upper"
+  second: "Obstacles"
+}
+collide_include {
+  first: "Shoulders"
+  second: "Obstacles"
 }
 dt: 0.02
 substeps: 4
