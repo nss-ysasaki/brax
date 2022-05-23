@@ -21,6 +21,7 @@ from brax import jumpy as jp
 from brax import math
 from brax.envs import env
 import jax.numpy as jnp
+import jax.experimental.host_callback as hcb
 
 
 class Fetch(env.Env):
@@ -117,7 +118,8 @@ class Fetch(env.Env):
     #target = jp.where(target_hit, target, qp.pos[self.target_idx])
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
-    print(f"next_waypoint: {self.next_waypoint}")
+    hcb.call(
+        lambda x: print(f"next_waypoint: {x}"), self.next_waypoint)
     return state.replace(qp=qp, obs=obs, reward=reward)
 
   def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
