@@ -34,7 +34,7 @@ class Fetch(env.Env):
     self.target_radius = 2
     self.target_distance = 15
     self.lap_time = jp.float32(0.)
-    self.next_waypoint = 0
+    self.next_waypoint = jp.int32(0)
     self.waypoints = jnp.array([
         [0, 10, 0,],
         [0, 20, 0,],
