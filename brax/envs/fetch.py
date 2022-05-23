@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Trains an agent to locomote to a target location."""
+"""Trains an agent to locomote forward."""
 
 from typing import Tuple
 
@@ -23,7 +23,7 @@ from brax.envs import env
 
 
 class Fetch(env.Env):
-  """Fetch trains a dog to run to a target location."""
+  """Fetch trains a dog to run forward."""
 
   def __init__(self, legacy_spring=False, **kwargs):
     config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
@@ -36,9 +36,7 @@ class Fetch(env.Env):
     obs = self._get_obs(qp, info)
     reward, done, zero = jp.zeros(3)
     metrics = {
-        'hits': zero,
-        'weightedHits': zero,
-        'movingToTarget': zero,
+        'torsoSpeed': zero,
         'torsoIsUp': zero,
         'torsoHeight': zero
     }
@@ -72,7 +70,7 @@ class Fetch(env.Env):
     return state.replace(qp=qp, obs=obs, reward=reward)
 
   def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
-    """Egocentric observation of target and the dog's body."""
+    """Egocentric observation of the dog's body."""
     torso_fwd = math.rotate(jp.array([1., 0., 0.]), qp.rot[self.torso_idx])
     torso_up = math.rotate(jp.array([0., 0., 1.]), qp.rot[self.torso_idx])
 
@@ -89,8 +87,7 @@ class Fetch(env.Env):
     contacts = jp.where(contact_mag > 0.00001, 1, 0)
 
     return jp.concatenate([
-        torso_fwd, torso_up, target_local_mag, target_local_dir, pos_local,
-        vel_local, contacts
+        torso_fwd, torso_up, pos_local, vel_local, contacts
     ])
 
 
