@@ -272,6 +272,7 @@ _SYSTEM_CONFIG = """
     colliders { position { x:-0.1 y:6 z:0 } sphere { radius: 0.25 }}
     colliders { position { x:1 y:11 z:0 } sphere { radius: 1 }}
     frozen { all: true }
+    mass: 1000.0
   }
   joints {
     name: "Torso_Shoulders"
@@ -602,6 +603,7 @@ bodies {
   colliders { position { x:-0.1 y:6 z:0 } sphere { radius: 0.25 }}
   colliders { position { x:1 y:11 z:0 } sphere { radius: 1 }}
   frozen { all: true }
+  mass: 1000.0
 }
 joints {
   name: "Torso_Shoulders"
