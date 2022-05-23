@@ -147,7 +147,7 @@ class Fetch(env.Env):
   def _get_target_position(self) -> jp.ndarray:
     """Returns the location of the next waypoint."""
     i = self.next_waypoint % len(self.waypoints)
-    target = (self.waypoints[i]).transpose()
+    target = (jp.asarray(self.waypoints)[i]).transpose()
     return target
 
 
