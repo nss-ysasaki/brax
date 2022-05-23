@@ -46,6 +46,7 @@ class Fetch(env.Env):
 
   def reset(self, rng: jp.ndarray) -> env.State:
     qp = self.sys.default_qp()
+    self.next_waypoint = 0
     target = self._move_target()
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
@@ -99,6 +100,7 @@ class Fetch(env.Env):
         torsoHeight=torso_height)
 
     # teleport any hit targets
+    self.next_waypoint += 1
     target = self._move_target()
     target = jp.where(target_hit, target, qp.pos[self.target_idx])
     pos = jp.index_update(qp.pos, self.target_idx, target)
@@ -133,7 +135,6 @@ class Fetch(env.Env):
 
   def _move_target(self) -> jp.ndarray:
     """Returns the location of the next waypoint."""
-    self.next_waypoint += 1
     i = self.next_waypoint % len(self.waypoints)
     target = self.waypoints[i].transpose()
     return target
