@@ -20,6 +20,7 @@ import brax
 from brax import jumpy as jp
 from brax import math
 from brax.envs import env
+import jax.numpy as jnp
 
 
 class Fetch(env.Env):
@@ -34,7 +35,7 @@ class Fetch(env.Env):
     self.target_distance = 15
     self.lap_time = jp.float32(0.)
     self.next_waypoint = 0
-    self.waypoints = jp.array([
+    self.waypoints = jnp.array([
         [0, 10, 0,],
         [0, 20, 0,],
         [5, 25, 0,],
