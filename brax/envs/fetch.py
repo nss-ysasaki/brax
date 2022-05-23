@@ -77,10 +77,10 @@ class Fetch(env.Env):
     # small reward for torso being up
     up = jp.array([0., 0., 1.])
     torso_up = math.rotate(up, qp.rot[self.torso_idx])
-    torso_is_up = .1 * self.sys.config.dt * jp.dot(torso_up, up)
+    torso_is_up = 1. * self.sys.config.dt * jp.dot(torso_up, up)
 
     # small reward for torso height
-    torso_height = .1 * self.sys.config.dt * qp.pos[0, 2]
+    torso_height = 1. * self.sys.config.dt * qp.pos[0, 2]
 
     # big reward for reaching target and facing it
     fwd = jp.array([1., 0., 0.])
