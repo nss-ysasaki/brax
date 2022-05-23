@@ -68,7 +68,7 @@ class Humanoid(env.Env):
     alive_bonus = jp.float32(5)
     reward = digression_cost - quad_ctrl_cost - quad_impact_cost + alive_bonus
 
-    done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
+    done = jp.where(qp.pos[0, 2] < 1, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
         reward_digression=digression_cost,
