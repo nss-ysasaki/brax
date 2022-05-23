@@ -268,7 +268,9 @@ _SYSTEM_CONFIG = """
   }
   bodies {
     name: "Obstacles"
-    colliders { position { x:0. y:4 z:1.3 } box { halfsize { x: 1.0 y: 0.1 z: 1.0 }} color: "blue"}
+    colliders { position { x:0. y:4 z:1.3 } box { halfsize { x: 2.0 y: 0.1 z: 0.5 }} color: "blue"}
+    colliders { position { x:0.5 y:7.5 z:1.3 } box { halfsize { x: 1.0 y: 0.1 z: 3. }} color: "blue"}
+    colliders { position { x:10. y:7.5 z:1.5 } box { halfsize { x: 2.0 y: 0.1 z: 0.5 }} color: "blue"}
     frozen { all: true }
     inertia { x: 1000. y: 1000. z: 1000. }
     mass: 20.0
