@@ -46,7 +46,7 @@ class Humanoid(env.Env):
     obs = self._get_obs(qp, info, jp.zeros(self.action_size))
     reward, done, zero = jp.zeros(3)
     metrics = {
-        'reward_linvel': zero,
+        'reward_digression': zero,
         'reward_quadctrl': zero,
         'reward_alive': zero,
         'reward_impact': zero
@@ -60,19 +60,18 @@ class Humanoid(env.Env):
 
     pos_before = state.qp.pos[:-1]  # ignore floor at last index
     pos_after = qp.pos[:-1]  # ignore floor at last index
-    com_before = jp.sum(pos_before * self.mass, axis=0) / jp.sum(self.mass)
-    com_after = jp.sum(pos_after * self.mass, axis=0) / jp.sum(self.mass)
-    lin_vel_cost = 1.25 * (com_after[0] - com_before[0]) / self.sys.config.dt
+    # Punish if the person is away from the origin
+    digression_cost = -jp.linalg.norm(pos_after - jp.zeros(2))
     quad_ctrl_cost = .01 * jp.sum(jp.square(action))
     # can ignore contact cost, see: https://github.com/openai/gym/issues/1541
     quad_impact_cost = jp.float32(0)
     alive_bonus = jp.float32(5)
-    reward = lin_vel_cost - quad_ctrl_cost - quad_impact_cost + alive_bonus
+    reward = digression_cost - quad_ctrl_cost - quad_impact_cost + alive_bonus
 
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
-        reward_linvel=lin_vel_cost,
+        reward_digression=digression_cost,
         reward_quadctrl=quad_ctrl_cost,
         reward_alive=alive_bonus,
         reward_impact=quad_impact_cost)
