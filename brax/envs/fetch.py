@@ -266,6 +266,21 @@ _SYSTEM_CONFIG = """
     colliders { sphere { radius: 2 }}
     frozen { all: true }
   }
+  bodies {
+    name: "Obstacle 1"
+    colliders { position { x:0.2 y:3 z:0 } sphere { radius: 0.1 }}
+    frozen { all: true }
+  }
+  bodies {
+    name: "Obstacle 2"
+    colliders { position { x:-0.1 y:6 z:0 } sphere { radius: 0.25 }}
+    frozen { all: true }
+  }
+  bodies {
+    name: "Obstacle 3"
+    colliders { position { x:1 y:11 z:0 } sphere { radius: 2 }}
+    frozen { all: true }
+  }
   joints {
     name: "Torso_Shoulders"
     angle_limit { min: -60 max: 60 }
@@ -567,6 +582,21 @@ bodies {
 bodies {
   name: "Target"
   colliders { sphere { radius: 2 }}
+  frozen { all: true }
+}
+bodies {
+  name: "Obstacle 1"
+  colliders { position { x:0.2 y:3 z:0 } sphere { radius: 0.1 }}
+  frozen { all: true }
+}
+bodies {
+  name: "Obstacle 2"
+  colliders { position { x:-0.1 y:6 z:0 } sphere { radius: 0.25 }}
+  frozen { all: true }
+}
+bodies {
+  name: "Obstacle 3"
+  colliders { position { x:1 y:11 z:0 } sphere { radius: 2 }}
   frozen { all: true }
 }
 joints {
