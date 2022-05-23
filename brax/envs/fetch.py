@@ -99,11 +99,10 @@ class Fetch(env.Env):
         torsoHeight=torso_height)
 
     # teleport any hit targets
-    rng, target = self._move_target(state.info['rng'])
+    target = self._move_target()
     target = jp.where(target_hit, target, qp.pos[self.target_idx])
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
-    state.info.update(rng=rng)
     return state.replace(qp=qp, obs=obs, reward=reward)
 
   def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
