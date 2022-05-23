@@ -33,7 +33,6 @@ class Fetch(env.Env):
     self.torso_idx = self.sys.body.index['Torso']
     self.target_radius = 2
     self.target_distance = 15
-    self.lap_time = jp.float32(0.)
     self.next_waypoint = jp.int32(0)
     self.waypoints = jnp.array([
         [0, 10, 0,],
@@ -48,7 +47,6 @@ class Fetch(env.Env):
 
   def reset(self, rng: jp.ndarray) -> env.State:
     qp = self.sys.default_qp()
-    self.lap_time = jp.float32(0.)
     target = self.waypoints[0]
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
@@ -66,6 +64,7 @@ class Fetch(env.Env):
     info = {
         'rng': rng,
         'next_waypoint': jp.int32(0),
+        'lap_time': jp.int32(0),
     }
     return env.State(qp, obs, reward, done, metrics, info)
 
@@ -97,9 +96,9 @@ class Fetch(env.Env):
     weighted_hit = target_hit * torso_facing
 
     # penalize if it takes too long to reach the target 
-    self.lap_time = jp.where(
-        target_hit, jp.float32(0), self.lap_time + self.sys.config.dt)
-    lap_penalty = 1. * self.lap_time * self.sys.config.dt
+    state.info["lap_time"] = jp.where(
+        target_hit, jp.float32(0), state.info["lap_time"] + self.sys.config.dt)
+    lap_penalty = 1. * state.info["lap_time"] * self.sys.config.dt
 
     reward = torso_height + moving_to_target + torso_is_up + weighted_hit \
         - lap_penalty
