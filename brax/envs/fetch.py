@@ -33,7 +33,6 @@ class Fetch(env.Env):
     self.torso_idx = self.sys.body.index['Torso']
     self.target_radius = 2
     self.target_distance = 15
-    self.next_waypoint = jp.int32(0)
     self.waypoints = jnp.array([
         [0, 10, 0,],
         [0, 20, 0,],
@@ -59,12 +58,10 @@ class Fetch(env.Env):
         'movingToTarget': zero,
         'torsoIsUp': zero,
         'torsoHeight': zero,
-        'lap_penalty': zero
     }
     info = {
         'rng': rng,
         'next_waypoint': jp.int32(0),
-        'lap_time': jp.int32(0),
     }
     return env.State(qp, obs, reward, done, metrics, info)
 
@@ -79,13 +76,13 @@ class Fetch(env.Env):
     target_dir = target_rel / (1e-6 + target_dist)
     moving_to_target = .1 * jp.dot(torso_delta, target_dir)
 
-    # moderate reward for torso being up
+    # small reward for torso being up
     up = jp.array([0., 0., 1.])
     torso_up = math.rotate(up, qp.rot[self.torso_idx])
-    torso_is_up = .5 * self.sys.config.dt * jp.dot(torso_up, up)
+    torso_is_up = .1 * self.sys.config.dt * jp.dot(torso_up, up)
 
-    # moderate reward for torso height
-    torso_height = .5 * self.sys.config.dt * qp.pos[0, 2]
+    # small reward for torso height
+    torso_height = .1 * self.sys.config.dt * qp.pos[0, 2]
 
     # big reward for reaching target and facing it
     fwd = jp.array([1., 0., 0.])
@@ -95,21 +92,14 @@ class Fetch(env.Env):
     target_hit = jp.where(target_hit, jp.float32(1), jp.float32(0))
     weighted_hit = target_hit * torso_facing
 
-    # penalize if it takes too long to reach the target 
-    state.info["lap_time"] = jp.where(
-        target_hit, jp.float32(0), state.info["lap_time"] + self.sys.config.dt)
-    lap_penalty = 1. * state.info["lap_time"] * self.sys.config.dt
-
-    reward = torso_height + moving_to_target + torso_is_up + weighted_hit \
-        - lap_penalty
+    reward = torso_height + moving_to_target + torso_is_up + weighted_hit
 
     state.metrics.update(
         hits=target_hit,
         weightedHits=weighted_hit,
         movingToTarget=moving_to_target,
         torsoIsUp=torso_is_up,
-        torsoHeight=torso_height,
-        lap_penalty=lap_penalty)
+        torsoHeight=torso_height)
 
     # teleport any hit targets
     state.info["next_waypoint"] = jp.where(
