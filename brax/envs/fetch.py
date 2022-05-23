@@ -66,7 +66,6 @@ class Fetch(env.Env):
         torsoIsUp=torso_is_up,
         torsoHeight=torso_height)
 
-    state.info.update(rng=rng)
     return state.replace(qp=qp, obs=obs, reward=reward)
 
   def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
