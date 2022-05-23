@@ -50,8 +50,7 @@ class Fetch(env.Env):
   def reset(self, rng: jp.ndarray) -> env.State:
     qp = self.sys.default_qp()
     self.lap_time = jp.float32(0.)
-    self.next_waypoint = 0
-    target = self._get_target_position()
+    target = self.waypoints[0]
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
     info = self.sys.info(qp)
@@ -65,7 +64,10 @@ class Fetch(env.Env):
         'torsoHeight': zero,
         'lap_penalty': zero
     }
-    info = {'rng': rng}
+    info = {
+        'rng': rng,
+        'next_waypoint': zero,
+    }
     return env.State(qp, obs, reward, done, metrics, info)
 
   def step(self, state: env.State, action: jp.ndarray) -> env.State:
@@ -112,14 +114,13 @@ class Fetch(env.Env):
         lap_penalty=lap_penalty)
 
     # teleport any hit targets
-    self.next_waypoint = jp.where(
-        target_hit, self.next_waypoint+1, self.next_waypoint)
-    target = self._get_target_position()
-    #target = jp.where(target_hit, target, qp.pos[self.target_idx])
+    state.info["next_waypoint"] = jp.where(
+        target_hit,
+        state.info["next_waypoint"]+1,
+        state.info["next_waypoint"])
+    target = self._get_target_position(state.info["next_waypoint"])
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
-    hcb.call(
-        lambda x: print(f"next_waypoint: {x}"), self.next_waypoint)
     return state.replace(qp=qp, obs=obs, reward=reward)
 
   def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
@@ -148,9 +149,9 @@ class Fetch(env.Env):
         vel_local, contacts
     ])
 
-  def _get_target_position(self) -> jp.ndarray:
+  def _get_target_position(self, next_waypoint) -> jp.ndarray:
     """Returns the location of the next waypoint."""
-    i = self.next_waypoint % len(self.waypoints)
+    i = next_waypoint % len(self.waypoints)
     target = (self.waypoints[i]).transpose()
     return target
 
