@@ -269,15 +269,46 @@ _SYSTEM_CONFIG = """
   bodies {
     name: "Obstacles"
     colliders {
-      position { x: 0. y: 5 z: 0 }
-      capsule { radius: .25 length: 1. }
+      position { x: 0. y: 5. z: 0. }
+      capsule { radius: .25 length: 26. }
+      rotation { x: 90 y: 90 }
+      color: "cyan"
+    }
+    colliders {
+      position { x: -5. y: 15. z: 0 }
+      capsule { radius: .5 length: 10. }
+      rotation { x: 90 y: 90 }
       color: "blue"
     }
     colliders {
-      position { x: 0. y: 15 z: 0 }
-      capsule { radius: .5 length: 5. }
-      rotation { x: 90 y: 90}
+      position { x: 2. y: 23. z: 0 }
+      capsule { radius: .5 length: 7. }
+      rotation { x: 90 }
       color: "blue"
+    }
+    colliders {
+      position { x: 6. y: 22. z: 0 }
+      capsule { radius: .5 length: 10. }
+      rotation { x: 90 y: 90 }
+      color: "blue"
+    }
+    colliders {
+      position { x: 5. y: 15. z: 0 }
+      capsule { radius: .5 length: 10. }
+      rotation { x: 90 }
+      color: "blue"
+    }
+    colliders {
+      position { x: 10. y: 12. z: 0 }
+      capsule { radius: .5 length: 10. }
+      rotation { x: 90 y: 90 }
+      color: "blue"
+    }
+    colliders {
+      position { x: -3. y: 5. z: 0. }
+      capsule { radius: .25 length: 21. }
+      rotation { x: 90 y: 90 }
+      color: "cyan"
     }
     frozen { all: true }
     inertia { x: 1000. y: 1000. z: 1000. }
