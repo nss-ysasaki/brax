@@ -21,7 +21,10 @@ from brax.physics import bodies
 
 
 class Humanoid(env.Env):
-  """Trains a humanoid to run in the +x direction."""
+  """Trains a humanoid to run in the +x direction.
+  Refer openai/gym for the details of this implementation:
+  https://github.com/openai/gym/blob/master/gym/envs/mujoco/humanoid_v3.py#L20
+  """
 
   def __init__(self, legacy_spring=False, **kwargs):
     config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
