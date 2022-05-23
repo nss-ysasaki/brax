@@ -60,7 +60,7 @@ ENV_DESCS = {
         dict(
             components=dict(
                 agent1=dict(
-                    component='ant',
+                    component='humanoid',
                     pos=(0, 0, 0),
                 ),
                 cap1=dict(
