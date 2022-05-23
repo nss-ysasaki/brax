@@ -65,7 +65,7 @@ class Fetch(env.Env):
     }
     info = {
         'rng': rng,
-        'next_waypoint': zero,
+        'next_waypoint': jp.int32(0),
     }
     return env.State(qp, obs, reward, done, metrics, info)
 
