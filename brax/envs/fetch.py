@@ -33,7 +33,7 @@ class Fetch(env.Env):
     self.target_radius = 2
     self.target_distance = 15
     self.lap_time = jp.float32(0.)
-    self.next_waypoint = jp.int32(0)
+    self.next_waypoint = 0
     self.waypoints = jp.array([
         [0, 10, 0,],
         [0, 20, 0,],
@@ -48,7 +48,7 @@ class Fetch(env.Env):
   def reset(self, rng: jp.ndarray) -> env.State:
     qp = self.sys.default_qp()
     self.lap_time = jp.float32(0.)
-    self.next_waypoint = jp.int32(0)
+    self.next_waypoint = 0
     target = self._get_target_position()
     pos = jp.index_update(qp.pos, self.target_idx, target)
     qp = qp.replace(pos=pos)
@@ -147,7 +147,7 @@ class Fetch(env.Env):
   def _get_target_position(self) -> jp.ndarray:
     """Returns the location of the next waypoint."""
     i = self.next_waypoint % len(self.waypoints)
-    target = (jp.asarray(self.waypoints)[i]).transpose()
+    target = (self.waypoints[i]).transpose()
     return target
 
 
