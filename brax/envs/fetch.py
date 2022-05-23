@@ -49,8 +49,8 @@ class Fetch(env.Env):
 
     # big reward for torso moving forward (along x, y axis)
     torso_delta = qp.pos[self.torso_idx] - state.qp.pos[self.torso_idx]
-    torso_delta = torso_delta * jp.array([1, 0, 0])
-    torso_speed = 1.25 * jp.dot(torso_delta) / self.sys.config.dt
+    torso_delta_x = jp.dot(torso_delta, jp.array([1, 0, 0]))
+    torso_speed = 1.25 * torso_delta_x / self.sys.config.dt
 
     # small reward for torso being up
     up = jp.array([0., 0., 1.])
