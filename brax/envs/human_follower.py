@@ -48,6 +48,7 @@ class HumanFollower(env.Env):
 
   def reset(self, rng: jp.ndarray) -> env.State:
     """Resets the environment to an initial state."""
+    rng, rng1, rng2 = jp.random_split(rng, 3)
     qpos = self.sys.default_angle() + jp.random_uniform(
         rng1, (self.sys.num_joint_dof,), -.01, .01)
     qvel = jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.01, .01)
