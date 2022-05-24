@@ -160,7 +160,7 @@ class HumanFollower(env.Env):
 
     # Observe the distance between the waist and the target
     lwaist_qps = jp.take(qp, jp.array(self.lwaist_idx))
-    tip_pos, tip_vel = arm_qps.to_world(jp.array([0., 0., 0.]))
+    tip_pos, tip_vel = lwaist_qps.to_world(jp.array([0., 0., 0.]))
     tip_to_target = [lwaist_qps - qp.pos[self.target_idx]]
 
     return jp.concatenate(
