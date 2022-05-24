@@ -161,8 +161,8 @@ class HumanFollower(env.Env):
     cfrc_ext = [x.reshape(x.shape[:-2] + (-1,)) for x in cfrc_ext]
 
     # center of mass obs:
-    body_pos = qp.pos[:-1]  # ignore floor at last index
-    body_vel = qp.vel[:-1]  # ignore floor at last index
+    body_pos = qp.pos[:-2]  # ignore floor and target
+    body_vel = qp.vel[:-2]  # ignore floor and target
 
     com_vec = jp.sum(body_pos * self.mass, axis=0) / jp.sum(self.mass)
     com_vel = body_vel * self.mass / jp.sum(self.mass)
