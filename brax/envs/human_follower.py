@@ -78,7 +78,7 @@ class HumanFollower(env.Env):
     quad_impact_cost = jp.float32(0)
     alive_bonus = jp.float32(5)
 
-    # moderate reward for the center of mass moving towards the target
+    # small reward for the center of mass moving towards the target
     target_pos = qp.pos[self.target_idx]
     pos_before = state.qp.pos[:-2]  # All object pos's, except target and floor
     pos_after = qp.pos[:-2]
@@ -88,8 +88,8 @@ class HumanFollower(env.Env):
     target_rel = target_pos - com_after
     target_dist = jp.norm(target_rel)
     target_dir = target_rel / (1e-6 + target_dist.reshape(-1))
-    moving_to_target = 1.5 * self.sys.config.dt * jp.dot(com_vel, target_dir)
-    close_to_target = 1.5 * self.sys.config.dt * 1. / (1. + target_dist)
+    moving_to_target = .1 * self.sys.config.dt * jp.dot(com_vel, target_dir)
+    close_to_target = .1 * self.sys.config.dt * 1. / (1. + target_dist)
 
     # small reward for torso height
     torso_height = .1 * self.sys.config.dt * qp.pos[0]
