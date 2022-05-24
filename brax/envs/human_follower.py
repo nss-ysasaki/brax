@@ -26,7 +26,7 @@ class HumanFollower(env.Env):
   """Trains a humanoid to follow the target (without falling!)
 
   This environment is a mixture of Reacher/Grasp and Humanoid.
-  When 'right_lower_arm' reaches 'target', the agent is rewarded.
+  When 'lwaist' reaches 'target', the agent is rewarded.
   Additionally, the agent is punished if if the humanoid falls.
   """
 
@@ -42,7 +42,7 @@ class HumanFollower(env.Env):
     self.inertia_matrix = jp.array([jp.diag(a) for a in self.inertia])
 
     ## Taret tracking (Reacher/ Grasp)
-    self.arm_idx = self.sys.body.index['right_lower_arm']
+    self.lwaist_idx = self.sys.body.index['lwaist']
     self.target_idx = self.sys.body.index['target']
     self.target_radius = 1.1
 
@@ -158,10 +158,9 @@ class HumanFollower(env.Env):
     com_angular_vel = (v_cross(disp_vec, body_vel) / square_disp)
     cvel = [com_vel.reshape(-1), com_angular_vel.reshape(-1)]
 
-    # Observe the distance between the right arm and the target
-    arm_qps = jp.take(qp, jp.array(self.arm_idx))
-    tip_pos, tip_vel = arm_qps.to_world(jp.array([0.33, 0., 0.]))
-    tip_to_target = [tip_pos - qp.pos[self.target_idx]]
+    # Observe the distance between the waist and the target
+    lwaist_qps = jp.take(qp, jp.array(self.lwaist_idx))
+    tip_to_target = [lwaist_qps - qp.pos[self.target_idx]]
 
     return jp.concatenate(
         qpos + qvel + cinert + cvel + qfrc_actuator + cfrc_ext + tip_to_target)
@@ -169,7 +168,7 @@ class HumanFollower(env.Env):
   def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
     """Returns a target location in a random circle slightly above xy plane."""
     rng, rng1, rng2 = jp.random_split(rng, 3)
-    dist = 10 * jp.random_uniform(rng1)
+    dist = self.target_radius + 10 * jp.random_uniform(rng1)
     ang = jp.pi * 2. * jp.random_uniform(rng2)
     target_x = dist * jp.cos(ang)
     target_y = dist * jp.sin(ang)
