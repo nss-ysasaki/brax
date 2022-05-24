@@ -26,7 +26,7 @@ class HumanFollower(env.Env):
   """Trains a humanoid to follow the target (without falling!)
 
   This environment is a mixture of Reacher/Grasp and Humanoid.
-  When 'lwaist' reaches 'target', the agent is rewarded.
+  When 'torso' reaches 'target', the agent is rewarded.
   Additionally, the agent is punished if if the humanoid falls.
   """
 
@@ -42,7 +42,6 @@ class HumanFollower(env.Env):
     self.inertia_matrix = jp.array([jp.diag(a) for a in self.inertia])
 
     ## Taret tracking (Reacher/ Grasp)
-    self.lwaist_idx = self.sys.body.index['lwaist']
     self.target_idx = self.sys.body.index['target']
     self.target_radius = 1.1
 
@@ -57,13 +56,12 @@ class HumanFollower(env.Env):
     obs = self._get_obs(qp, info, jp.zeros(self.action_size))
     reward, done, zero = jp.zeros(3)
     metrics = {
-        'torso_height': zero,
         'moving_to_target': zero,
-        'torso_is_up': zero,
-        'weighted_hit': zero,
-        'reward_dist': zero,
-        'reward_quadctrl': zero,
+        'close_to_target': zero,
+        'target_hit': zero,
+        'torso_height': zero,
         'reward_alive': zero,
+        'reward_quadctrl': zero,
         'reward_impact': zero
     }
     info = {'rng': rng}
@@ -80,37 +78,37 @@ class HumanFollower(env.Env):
     quad_impact_cost = jp.float32(0)
     alive_bonus = jp.float32(5)
 
-    # small reward for lwaist moving towards target
-    lwaist_delta = qp.pos[self.lwaist_idx] - state.qp.pos[self.lwaist_idx]
-    target_rel = qp.pos[self.target_idx] - qp.pos[self.lwaist_idx]
+    # moderate reward for the center of mass moving towards the target
+    target_pos = qp.pos[self.target_idx]
+    pos_before = state.qp.pos[:-2]  # All object pos's, except target and floor
+    pos_after = qp.pos[:-2]
+    com_before = jp.sum(pos_before * self.mass, axis=0) / jp.sum(self.mass)
+    com_after = jp.sum(pos_after * self.mass, axis=0) / jp.sum(self.mass)
+    com_vel = com_after - com_before
+    target_rel = target_pos - com_after
     target_dist = jp.norm(target_rel)
-    target_dir = target_rel / (1e-6 + target_dist)
-    moving_to_target = .1 * jp.dot(lwaist_delta, target_dir)
+    target_dir = target_rel / (1e-6 + target_dist.reshape(-1))
+    moving_to_target = 1.5 * self.sys.config.dt * jp.dot(com_vel, target_dir)
+    close_to_target = 1.5 * self.sys.config.dt * 1. / (1. + target_dist)
 
-    # small reward for lwaist height
-    lwaist_height = .1 * self.sys.config.dt * qp.pos[self.target_idx]
+    # small reward for torso height
+    torso_height = .1 * self.sys.config.dt * qp.pos[0]
 
     # big reward for reaching target and facing it
-    fwd = jp.array([1., 0., 0.])
-    lwaist_fwd = math.rotate(fwd, qp.rot[self.lwaist_idx])
-    lwaist_facing = jp.dot(target_dir, lwaist_fwd)
-    target_hit = target_dist < self.target_radius
-    target_hit = jp.where(target_hit, jp.float32(1), jp.float32(0))
-    weighted_hit = target_hit * lwaist_facing
+    target_hit = 5. * jp.where(target_dist < self.target_radius, 1.0, 0.0)
 
-    reward = torso_height + moving_to_target + torso_is_up + weighted_hit \
-        - quad_ctrl_cost - quad_impact_cost + alive_bonus
+    reward = moving_to_target + close_to_target + target_hit + torso_height \
+         + alive_bonus - quad_ctrl_cost - quad_impact_cost
 
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
-        torso_height=torso_height,
         moving_to_target=moving_to_target,
-        torso_is_up=torso_is_up,
-        weighted_hit=weighted_hit,
-        reward_dist=(-target_dist),
-        reward_quadctrl=quad_ctrl_cost,
+        close_to_target=close_to_target,
+        target_hit=target_hit,
+        torso_height=torso_height,
         reward_alive=alive_bonus,
+        reward_quadctrl=quad_ctrl_cost,
         reward_impact=quad_impact_cost)
 
     # teleport any hit targets
@@ -183,13 +181,8 @@ class HumanFollower(env.Env):
     com_angular_vel = (v_cross(disp_vec, body_vel) / square_disp)
     cvel = [com_vel.reshape(-1), com_angular_vel.reshape(-1)]
 
-    # Observe the distance between the waist and the target
-    lwaist_qps = jp.take(qp, jp.array(self.lwaist_idx))
-    tip_pos, tip_vel = lwaist_qps.to_world(jp.array([0., 0., 0.]))
-    tip_to_target = [tip_pos - qp.pos[self.target_idx]]
-
     return jp.concatenate(
-        qpos + qvel + cinert + cvel + qfrc_actuator + cfrc_ext + tip_to_target)
+        qpos + qvel + cinert + cvel + qfrc_actuator + cfrc_ext)
 
   def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
     """Returns a target location in a random circle slightly above xy plane."""
