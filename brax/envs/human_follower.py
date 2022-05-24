@@ -36,7 +36,7 @@ class HumanFollower(env.Env):
 
     ## Fall prevention (Humanoid)
     body = bodies.Body(self.sys.config)
-    body = jp.take(body, body.idx[:-1])  # skip the floor body
+    body = jp.take(body, body.idx[:-2])  # skip the floor and target
     self.mass = body.mass.reshape(-1, 1)
     self.inertia = body.inertia
     self.inertia_matrix = jp.array([jp.diag(a) for a in self.inertia])
@@ -57,6 +57,10 @@ class HumanFollower(env.Env):
     obs = self._get_obs(qp, info, jp.zeros(self.action_size))
     reward, done, zero = jp.zeros(3)
     metrics = {
+        'torso_height': zero,
+        'moving_to_target': zero,
+        'torso_is_up': zero,
+        'weighted_hit': zero,
         'reward_dist': zero,
         'reward_quadctrl': zero,
         'reward_alive': zero,
@@ -76,13 +80,34 @@ class HumanFollower(env.Env):
     quad_impact_cost = jp.float32(0)
     alive_bonus = jp.float32(5)
 
-    target_dist = jp.norm(obs[-3:])
+    # small reward for lwaist moving towards target
+    lwaist_delta = qp.pos[self.lwaist_idx] - state.qp.pos[self.lwaist_idx]
+    target_rel = qp.pos[self.target_idx] - qp.pos[self.lwaist_idx]
+    target_dist = jp.norm(target_rel)
+    target_dir = target_rel / (1e-6 + target_dist)
+    moving_to_target = .1 * jp.dot(lwaist_delta, target_dir)
 
-    reward = (-target_dist) - quad_ctrl_cost - quad_impact_cost + alive_bonus
+    # small reward for lwaist height
+    lwaist_height = .1 * self.sys.config.dt * qp.pos[self.target_idx]
+
+    # big reward for reaching target and facing it
+    fwd = jp.array([1., 0., 0.])
+    lwaist_fwd = math.rotate(fwd, qp.rot[self.lwaist_idx])
+    lwaist_facing = jp.dot(target_dir, lwaist_fwd)
+    target_hit = target_dist < self.target_radius
+    target_hit = jp.where(target_hit, jp.float32(1), jp.float32(0))
+    weighted_hit = target_hit * lwaist_facing
+
+    reward = torso_height + moving_to_target + torso_is_up + weighted_hit \
+        - quad_ctrl_cost - quad_impact_cost + alive_bonus
 
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
+        torso_height=torso_height,
+        moving_to_target=moving_to_target,
+        torso_is_up=torso_is_up,
+        weighted_hit=weighted_hit,
         reward_dist=(-target_dist),
         reward_quadctrl=quad_ctrl_cost,
         reward_alive=alive_bonus,
