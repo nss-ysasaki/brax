@@ -172,12 +172,12 @@ class HumanFollower(env.Env):
 
     disp_vec = body_pos - com_vec
     com_inert = self.inertia_matrix + self.mass.reshape(
-        (12, 1, 1)) * ((jp.norm(disp_vec, axis=1)**2.).reshape(
-            (12, 1, 1)) * jp.stack([jp.eye(3)] * 12) - v_outer(disp_vec))
+        (11, 1, 1)) * ((jp.norm(disp_vec, axis=1)**2.).reshape(
+            (11, 1, 1)) * jp.stack([jp.eye(3)] * 11) - v_outer(disp_vec))
 
     cinert = [com_inert.reshape(-1)]
 
-    square_disp = (1e-7 + (jp.norm(disp_vec, axis=1)**2.)).reshape((12, 1))
+    square_disp = (1e-7 + (jp.norm(disp_vec, axis=1)**2.)).reshape((11, 1))
     com_angular_vel = (v_cross(disp_vec, body_vel) / square_disp)
     cvel = [com_vel.reshape(-1), com_angular_vel.reshape(-1)]
 
