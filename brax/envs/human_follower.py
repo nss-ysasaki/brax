@@ -99,7 +99,8 @@ class HumanFollower(env.Env):
 
     #reward = moving_to_target + close_to_target + target_hit + torso_height \
     #     + alive_bonus - quad_ctrl_cost - quad_impact_cost
-    reward = alive_bonus - quad_ctrl_cost - quad_impact_cost
+    reward = moving_to_target + close_to_target + alive_bonus \
+        - quad_ctrl_cost - quad_impact_cost
 
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
@@ -112,13 +113,13 @@ class HumanFollower(env.Env):
         reward_quadctrl=quad_ctrl_cost,
         reward_impact=quad_impact_cost)
 
-    ## teleport any hit targets
-    #rng, target = self._random_target(state.info['rng'])
-    #target = jp.where(
-    #    target_dist < self.target_radius, target, qp.pos[self.target_idx])
-    #pos = jp.index_update(qp.pos, self.target_idx, target)
-    #qp = qp.replace(pos=pos)
-    #state.info.update(rng=rng)
+    # teleport any hit targets
+    rng, target = self._random_target(state.info['rng'])
+    target = jp.where(
+        target_dist < self.target_radius, target, qp.pos[self.target_idx])
+    pos = jp.index_update(qp.pos, self.target_idx, target)
+    qp = qp.replace(pos=pos)
+    state.info.update(rng=rng)
 
     return state.replace(qp=qp, obs=obs, reward=reward, done=done)
 
