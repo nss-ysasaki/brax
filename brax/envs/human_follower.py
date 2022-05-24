@@ -56,10 +56,10 @@ class HumanFollower(env.Env):
     obs = self._get_obs(qp, info, jp.zeros(self.action_size))
     reward, done, zero = jp.zeros(3)
     metrics = {
-        'moving_to_target': zero,
-        'close_to_target': zero,
-        'target_hit': zero,
-        'torso_height': zero,
+        #'moving_to_target': zero,
+        #'close_to_target': zero,
+        #'target_hit': zero,
+        #'torso_height': zero,
         'reward_alive': zero,
         'reward_quadctrl': zero,
         'reward_impact': zero
@@ -104,10 +104,10 @@ class HumanFollower(env.Env):
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
-        moving_to_target=moving_to_target,
-        close_to_target=close_to_target,
-        target_hit=target_hit,
-        torso_height=torso_height,
+        #moving_to_target=moving_to_target,
+        #close_to_target=close_to_target,
+        #target_hit=target_hit,
+        #torso_height=torso_height,
         reward_alive=alive_bonus,
         reward_quadctrl=quad_ctrl_cost,
         reward_impact=quad_impact_cost)
