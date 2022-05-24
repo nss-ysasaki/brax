@@ -83,7 +83,7 @@ class HumanFollower(env.Env):
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
-        reward_dist=reward_dist,
+        reward_dist=(-target_dist),
         reward_quadctrl=quad_ctrl_cost,
         reward_alive=alive_bonus,
         reward_impact=quad_impact_cost)
