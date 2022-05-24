@@ -76,9 +76,9 @@ class HumanFollower(env.Env):
     quad_impact_cost = jp.float32(0)
     alive_bonus = jp.float32(5)
 
-    reward_dist = -jp.norm(obs[-3:])
+    target_dist = jp.norm(obs[-3:])
 
-    reward = reward_dist - quad_ctrl_cost - quad_impact_cost + alive_bonus
+    reward = (-target_dist) - quad_ctrl_cost - quad_impact_cost + alive_bonus
 
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
