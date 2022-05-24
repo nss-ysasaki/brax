@@ -56,8 +56,8 @@ class HumanFollower(env.Env):
     obs = self._get_obs(qp, info, jp.zeros(self.action_size))
     reward, done, zero = jp.zeros(3)
     metrics = {
-        #'moving_to_target': zero,
-        #'close_to_target': zero,
+        'moving_to_target': zero,
+        'close_to_target': zero,
         #'target_hit': zero,
         #'torso_height': zero,
         'reward_alive': zero,
@@ -78,18 +78,18 @@ class HumanFollower(env.Env):
     quad_impact_cost = jp.float32(0)
     alive_bonus = jp.float32(5)
 
-    ## small reward for the center of mass moving towards the target
-    #target_pos = qp.pos[self.target_idx]
-    #pos_before = state.qp.pos[:-2]  # All object pos's, except target and floor
-    #pos_after = qp.pos[:-2]
-    #com_before = jp.sum(pos_before * self.mass, axis=0) / jp.sum(self.mass)
-    #com_after = jp.sum(pos_after * self.mass, axis=0) / jp.sum(self.mass)
-    #com_vel = com_after - com_before
-    #target_rel = target_pos - com_after
-    #target_dist = jp.norm(target_rel)
-    #target_dir = target_rel / (1e-6 + target_dist.reshape(-1))
-    #moving_to_target = .1 * self.sys.config.dt * jp.dot(com_vel, target_dir)
-    #close_to_target = .1 * self.sys.config.dt * 1. / (1. + target_dist)
+    # small reward for the center of mass moving towards the target
+    target_pos = qp.pos[self.target_idx]
+    pos_before = state.qp.pos[:-2]  # All object pos's, except target and floor
+    pos_after = qp.pos[:-2]
+    com_before = jp.sum(pos_before * self.mass, axis=0) / jp.sum(self.mass)
+    com_after = jp.sum(pos_after * self.mass, axis=0) / jp.sum(self.mass)
+    com_vel = com_after - com_before
+    target_rel = target_pos - com_after
+    target_dist = jp.norm(target_rel)
+    target_dir = target_rel / (1e-6 + target_dist.reshape(-1))
+    moving_to_target = .1 * self.sys.config.dt * jp.dot(com_vel, target_dir)
+    close_to_target = .1 * self.sys.config.dt * 1. / (1. + target_dist)
 
     ## small reward for torso height
     #torso_height = .1 * self.sys.config.dt * qp.pos[0]
@@ -104,8 +104,8 @@ class HumanFollower(env.Env):
     done = jp.where(qp.pos[0, 2] < 0.8, jp.float32(1), jp.float32(0))
     done = jp.where(qp.pos[0, 2] > 2.1, jp.float32(1), done)
     state.metrics.update(
-        #moving_to_target=moving_to_target,
-        #close_to_target=close_to_target,
+        moving_to_target=moving_to_target,
+        close_to_target=close_to_target,
         #target_hit=target_hit,
         #torso_height=torso_height,
         reward_alive=alive_bonus,
