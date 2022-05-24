@@ -169,7 +169,7 @@ class HumanFollower(env.Env):
   def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
     """Returns a target location in a random circle slightly above xy plane."""
     rng, rng1, rng2 = jp.random_split(rng, 3)
-    dist = .2 * jp.random_uniform(rng1)
+    dist = 5 * jp.random_uniform(rng1)
     ang = jp.pi * 2. * jp.random_uniform(rng2)
     target_x = dist * jp.cos(ang)
     target_y = dist * jp.sin(ang)
