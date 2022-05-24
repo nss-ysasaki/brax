@@ -14,6 +14,8 @@
 
 """Trains a humanoid to follow the target."""
 
+from typing import Tuple
+
 import brax
 from brax import jumpy as jp
 from brax.envs import env
