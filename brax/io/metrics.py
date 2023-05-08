@@ -1,4 +1,4 @@
-# Copyright 2022 The Brax Authors.
+# Copyright 2023 The Brax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,4 +50,4 @@ class Writer:
     ]
     logging.info('[%d] %s', step, ', '.join(values))
     for k, v in scalars.items():
-      self._writer.add_scalars(k, {k: v}, step)
+      self._writer.add_scalar(k, v, step)

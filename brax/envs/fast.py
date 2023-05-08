@@ -1,4 +1,4 @@
-# Copyright 2022 The Brax Authors.
+# Copyright 2023 The Brax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,35 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Gotta go fast!  This trivial Env is meant for unit testing."""
+# pylint:disable=g-multiple-import
+"""Gotta go fast!  This trivial Env is for unit testing."""
 
-import brax
-from brax.envs import env
-import jax.numpy as jnp
+from brax import base
+from brax.envs.base import PipelineEnv, State
+from jax import numpy as jp
 
 
-class Fast(env.Env):
+class Fast(PipelineEnv):
   """Trains an agent to go fast."""
 
   def __init__(self, **kwargs):
-    super().__init__(config='dt: .02', **kwargs)
+    self._dt = 0.02
+    self._reset_count = 0
+    self._step_count = 0
 
-  def reset(self, rng: jnp.ndarray) -> env.State:
-    zero = jnp.zeros(1)
-    qp = brax.QP(pos=zero, vel=zero, rot=zero, ang=zero)
-    obs = jnp.zeros(2)
-    reward, done = jnp.zeros(2)
-    return env.State(qp, obs, reward, done)
+  def reset(self, rng: jp.ndarray) -> State:
+    self._reset_count += 1
+    pipeline_state = base.State(
+        q=jp.zeros(1),
+        qd=jp.zeros(1),
+        x=base.Transform.create(pos=jp.zeros(3)),
+        xd=base.Motion.create(vel=jp.zeros(3)),
+        contact=None
+    )
+    obs = jp.zeros(2)
+    reward, done = jp.array(0.0), jp.array(0.0)
+    return State(pipeline_state, obs, reward, done)
 
-  def step(self, state: env.State, action: jnp.ndarray) -> env.State:
-    vel = state.qp.vel + (action > 0) * self.sys.config.dt
-    pos = state.qp.pos + vel * self.sys.config.dt
+  def step(self, state: State, action: jp.ndarray) -> State:
+    self._step_count += 1
+    vel = state.pipeline_state.xd.vel + (action > 0) * self._dt
+    pos = state.pipeline_state.x.pos + vel * self._dt
 
-    qp = state.qp.replace(pos=pos, vel=vel)
-    obs = jnp.array([pos[0], vel[0]])
+    qp = state.pipeline_state.replace(
+        x=state.pipeline_state.x.replace(pos=pos),
+        xd=state.pipeline_state.xd.replace(vel=vel),
+    )
+    obs = jp.array([pos[0], vel[0]])
     reward = pos[0]
 
-    return state.replace(qp=qp, obs=obs, reward=reward)
+    return state.replace(pipeline_state=qp, obs=obs, reward=reward)
+
+  @property
+  def reset_count(self):
+    return self._reset_count
+
+  @property
+  def step_count(self):
+    return self._step_count
 
   @property
   def observation_size(self):

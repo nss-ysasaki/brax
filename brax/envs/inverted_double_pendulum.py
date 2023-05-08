@@ -1,4 +1,4 @@
-# Copyright 2022 The Brax Authors.
+# Copyright 2023 The Brax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,232 +12,176 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint:disable=g-multiple-import
 """An inverted pendulum environment."""
 
-import brax
-from brax import jumpy as jp
-from brax.envs import env
+from brax import base
+from brax.envs.base import PipelineEnv, State
+from brax.io import mjcf
+from etils import epath
+import jax
+from jax import numpy as jp
 
 
-class InvertedDoublePendulum(env.Env):
-  """Trains an inverted pendulum to remain stationary."""
+class InvertedDoublePendulum(PipelineEnv):
 
-  def __init__(self, legacy_spring=False, **kwargs):
-    config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
-    super().__init__(config=config, **kwargs)
 
-  def reset(self, rng: jp.ndarray) -> env.State:
+
+  # pyformat: disable
+  """### Description
+
+  This environment originates from control theory and builds on the cartpole
+  environment based on the work done by Barto, Sutton, and Anderson in
+  ["Neuronlike adaptive elements that can solve difficult learning control
+  problems"](https://ieeexplore.ieee.org/document/6313077).
+
+  This environment involves a cart that can moved linearly, with a pole fixed on
+  it and a second pole fixed on the other end of the first one (leaving the
+  second pole as the only one with one free end). The cart can be pushed left or
+  right, and the goal is to balance the second pole on top of the first pole,
+  which is in turn on top of the cart, by applying continuous forces on the
+  cart.
+
+  ### Action Space
+
+  The agent take a 1-element vector for actions.
+
+  The action space is a continuous `(action)` in `[-3, 3]`, where `action`
+  represents the numerical force applied to the cart (with magnitude
+  representing the amount of force and sign representing the direction)
+
+  | Num | Action                    | Control Min | Control Max | Name (in
+  corresponding config) | Joint | Unit      |
+  |-----|---------------------------|-------------|-------------|--------------------------------|-------|-----------|
+  | 0   | Force applied on the cart | -3          | 3           | slider
+  | slide | Force (N) |
+
+  ### Observation Space
+
+  The state space consists of positional values of different body parts of the
+  pendulum system, followed by the velocities of those individual parts (their
+  derivatives) with all the positions ordered before all the velocities.
+
+  The observation is a `ndarray` with shape `(11,)` where the elements
+  correspond to the following:
+
+  | Num | Observation                                                       |
+  Min  | Max | Name (in corresponding config) | Joint | Unit
+  |
+  |-----|-------------------------------------------------------------------|------|-----|--------------------------------|-------|--------------------------|
+  | 0   | position of the cart along the linear surface                     |
+  -Inf | Inf | thruster                       | slide | position (m)
+  |
+  | 1   | sine of the angle between the cart and the first pole             |
+  -Inf | Inf | sin(hinge)                     | hinge | unitless
+  |
+  | 2   | sine of the angle between the two poles                           |
+  -Inf | Inf | sin(hinge2)                    | hinge | unitless
+  |
+  | 3   | cosine of the angle between the cart and the first pole           |
+  -Inf | Inf | cos(hinge)                     | hinge | unitless
+  |
+  | 4   | cosine of the angle between the two poles                         |
+  -Inf | Inf | cos(hinge2)                    | hinge | unitless
+  |
+  | 5   | velocity of the cart                                              |
+  -Inf | Inf | thruster                       | slide | velocity (m/s)
+  |
+  | 6   | angular velocity of the angle between the cart and the first pole |
+  -Inf | Inf | hinge                          | hinge | angular velocity (rad/s)
+  |
+  | 7   | angular velocity of the angle between the two poles               |
+  -Inf | Inf | hinge2                         | hinge | angular velocity (rad/s)
+  |
+
+  ### Rewards
+
+  The goal is to make the inverted pendulum stand upright (within a certain
+  angle limit) as long as possible - as such a reward of +1 is awarded for each
+  timestep that the pole is upright.
+
+  ### Starting State
+
+  All observations start in state (0.0, 0.0, 0.0, 0.0) with a uniform noise in
+  the range of [-0.01, 0.01] added to the values for stochasticity.
+
+  ### Episode Termination
+
+  The episode terminates when any of the following happens:
+
+  1. The episode duration reaches 1000 timesteps.
+  2. The absolute value of the vertical angle between the pole and the cart is
+  greater than 0.2 radians.
+  """
+  # pyformat: enable
+
+
+  def __init__(self, backend='generalized', **kwargs):
+    path = (
+        epath.resource_path('brax')
+        / 'envs/assets/inverted_double_pendulum.xml'
+    )
+    sys = mjcf.load(path)
+
+    n_frames = 2
+
+    if backend in ['spring', 'positional']:
+      sys = sys.replace(dt=0.005)
+      n_frames = 4
+
+    kwargs['n_frames'] = kwargs.get('n_frames', n_frames)
+
+    super().__init__(sys=sys, backend=backend, **kwargs)
+
+  def reset(self, rng: jp.ndarray) -> State:
     """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    qpos = self.sys.default_angle() + jp.random_uniform(
-        rng1, (self.sys.num_joint_dof,), -.01, .01)
-    qvel = jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.01, .01)
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    info = self.sys.info(qp)
-    (joint_angle,), (joint_vel,) = self.sys.joints[0].angle_vel(qp)
-    obs = self._get_obs(qp, info, joint_angle, joint_vel)
-    reward, done, zero = jp.zeros(3)
-    metrics = {
-        'dist_penalty': zero,
-        'vel_penalty': zero,
-        'alive_bonus': zero,
-        'r_tot': zero,
-    }
-    return env.State(qp, obs, reward, done, metrics)
+    rng, rng1, rng2 = jax.random.split(rng, 3)
 
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
+    q = self.sys.init_q + jax.random.uniform(
+        rng1, (self.sys.q_size(),), minval=-0.01, maxval=0.01
+    )
+    qd = jax.random.normal(rng2, (self.sys.qd_size(),)) * 0.01
+    pipeline_state = self.pipeline_init(q, qd)
+
+    obs = self._get_obs(pipeline_state)
+    reward, done = jp.zeros(2)
+    metrics = {}
+
+    return State(pipeline_state, obs, reward, done, metrics)
+
+  def step(self, state: State, action: jp.ndarray) -> State:
     """Run one timestep of the environment's dynamics."""
-    alive_bonus = 10.0
-    qp, info = self.sys.step(state.qp, action)
-    (joint_angle,), (joint_vel,) = self.sys.joints[0].angle_vel(qp)
-    obs = self._get_obs(qp, info, joint_angle, joint_vel)
-    tip_pos = jp.take(state.qp, 2).to_world(jp.array([0, 0, .3]))
-    (x, _, y), _ = tip_pos
-    dist_penalty = 0.01 * x**2 + (y - 2)**2
-    v1, v2 = joint_vel
-    vel_penalty = 1e-3 * v1**2 + 5e-3 * v2**2
-    alive_bonus = 10.0
-    r = alive_bonus - dist_penalty - vel_penalty
-    done = jp.where(y <= 1, jp.float32(1), jp.float32(0))
-    state.metrics.update(
-        dist_penalty=dist_penalty,
-        vel_penalty=vel_penalty,
-        alive_bonus=alive_bonus,
-        r_tot=r)
+    pipeline_state = self.pipeline_step(state.pipeline_state, action)
 
-    return state.replace(qp=qp, obs=obs, reward=r, done=done)
+    tip = base.Transform.create(pos=jp.array([0.0, 0.0, 0.6])).do(
+        pipeline_state.x.take(2)
+    )
+    x, _, y = tip.pos
+    dist_penalty = 0.01 * x**2 + (y - 2) ** 2
+    v1, v2 = pipeline_state.qd[1:]
+    vel_penalty = 1e-3 * v1**2 + 5e-3 * v2**2
+    alive_bonus = 10
+
+    obs = self._get_obs(pipeline_state)
+    reward = alive_bonus - dist_penalty - vel_penalty
+    done = jp.where(y <= 1, jp.float32(1), jp.float32(0))
+
+    return state.replace(
+        pipeline_state=pipeline_state, obs=obs, reward=reward, done=done
+    )
 
   @property
   def action_size(self):
     return 1
 
-  def _get_obs(self, qp: brax.QP, info: brax.Info, joint_angle: jp.ndarray,
-               joint_vel: jp.ndarray) -> jp.ndarray:
+  def _get_obs(self, pipeline_sate: base.State) -> jp.ndarray:
     """Observe cartpole body position and velocities."""
-
-    position_obs = [
-        jp.array([qp.pos[0, 0]]),  # cart x pos
-        jp.sin(joint_angle),
-        jp.cos(joint_angle)
-    ]
-
-    # qvel:
-    qvel = [jp.array([qp.vel[0, 0]]),  # cart x vel
-            joint_vel]
-
-    return jp.concatenate(position_obs + qvel)
-
-
-_SYSTEM_CONFIG = """
-  bodies {
-    name: "cart"
-    colliders {
-      rotation {
-      x: 90
-      z: 90
-      }
-      capsule {
-        radius: 0.1
-        length: 0.4
-      }
-    }
-    frozen { position { x:0 y:1 z:1 } rotation { x:1 y:1 z:1 } }
-    mass: 10.471975
-  }
-  bodies {
-    name: "pole"
-    colliders {
-      capsule {
-        radius: 0.049
-        length: 0.69800085
-      }
-    }
-    frozen { position { x: 0 y: 1 z: 0 } rotation { x: 1 y: 0 z: 1 } }
-    mass: 5.0185914
-  }
-  joints {
-    name: "hinge"
-    parent: "cart"
-    child: "pole"
-    child_offset { z: -.3 }
-    rotation {
-      z: 90.0
-    }
-    angle_limit { min: 0.0 max: 0.0 }
-  }
-  bodies {
-    name: "pole2"
-    colliders {
-      capsule {
-        radius: 0.049
-        length: 0.69800085
-      }
-    }
-    frozen { position { x: 0 y: 1 z: 0 } rotation { x: 1 y: 0 z: 1 } }
-    mass: 5.0185914
-  }
-  joints {
-    name: "hinge2"
-    parent: "pole"
-    child: "pole2"
-    parent_offset { z: .3 }
-    child_offset { z: -.3 }
-    rotation {
-      z: 90.0
-    }
-    angle_limit { min: 0.0 max: 0.0 }
-  }
-  forces {
-    name: "cart_thruster"
-    body: "cart"
-    strength: 500.0
-    thruster {}
-  }
-  collide_include {}
-  gravity {
-    z: -9.81
-  }
-  dt: 0.05
-  substeps: 12
-  dynamics_mode: "pbd"
-  """
-
-_SYSTEM_CONFIG_SPRING = """
-  bodies {
-    name: "cart"
-    colliders {
-      rotation {
-      x: 90
-      z: 90
-      }
-      capsule {
-        radius: 0.1
-        length: 0.4
-      }
-    }
-    frozen { position { x:0 y:1 z:1 } rotation { x:1 y:1 z:1 } }
-    mass: 10.471975
-  }
-  bodies {
-    name: "pole"
-    colliders {
-      capsule {
-        radius: 0.049
-        length: 0.69800085
-      }
-    }
-    frozen { position { x: 0 y: 1 z: 0 } rotation { x: 1 y: 0 z: 1 } }
-    mass: 5.0185914
-  }
-  joints {
-    name: "hinge"
-    stiffness: 30000.0
-    parent: "cart"
-    child: "pole"
-    child_offset { z: -.3 }
-    rotation {
-      z: 90.0
-    }
-    limit_strength: 0.0
-    spring_damping: 500.0
-    angle_limit { min: 0.0 max: 0.0 }
-  }
-  bodies {
-    name: "pole2"
-    colliders {
-      capsule {
-        radius: 0.049
-        length: 0.69800085
-      }
-    }
-    frozen { position { x: 0 y: 1 z: 0 } rotation { x: 1 y: 0 z: 1 } }
-    mass: 5.0185914
-  }
-  joints {
-    name: "hinge2"
-    stiffness: 30000.0
-    parent: "pole"
-    child: "pole2"
-    parent_offset { z: .3 }
-    child_offset { z: -.3 }
-    rotation {
-      z: 90.0
-    }
-    limit_strength: 0.0
-    spring_damping: 500.0
-    angle_limit { min: 0.0 max: 0.0 }
-  }
-  forces {
-    name: "cart_thruster"
-    body: "cart"
-    strength: 500.0
-    thruster {}
-  }
-  collide_include {}
-  gravity {
-    z: -9.81
-  }
-  dt: 0.05
-  substeps: 12
-  dynamics_mode: "legacy_spring"
-  """
+    return jp.concatenate(
+        [
+            pipeline_sate.q[:1],  # cart x pos
+            jp.sin(pipeline_sate.q[1:]),
+            jp.cos(pipeline_sate.q[1:]),
+            jp.clip(pipeline_sate.qd, -10, 10),
+            # qfrc_constraint is not added
+        ]
+    )

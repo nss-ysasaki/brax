@@ -1,4 +1,4 @@
-# Copyright 2022 The Brax Authors.
+# Copyright 2023 The Brax Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ from setuptools import setup
 
 setup(
     name="brax",
-    version="0.0.13",
+    version="0.9.0",
     description=("A differentiable physics engine written in JAX."),
     author="Brax Authors",
     author_email="no-reply@google.com",
@@ -37,18 +37,29 @@ setup(
     scripts=["bin/learn"],
     install_requires=[
         "absl-py",
-        "dataclasses",
+        "dataclasses; python_version < '3.7'",
+        # TODO: remove dm_env after dropping legacy v1 code
+        "dm_env",
+        "etils",
+        "flask",
+        "flask_cors",
         "flax",
-        "gym",
+        # TODO: remove grpcio and gym after dropping legacy v1 code
         "grpcio",
-        "jax",
-        "jaxlib",
+        "gym",
+        "jax>=0.4.6",
+        "jaxlib>=0.4.6",
+        "jaxopt",
+        "jinja2",
+        "mujoco",
         "numpy",
         "optax",
         "Pillow",
         "pytinyrenderer",
+        "scipy",
         "tensorboardX",
-        "trimesh",
+        "trimesh==3.9.35",
+        "typing-extensions",
     ],
     extras_require={
         "develop": ["pytest", "transforms3d"],
@@ -62,7 +73,4 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="JAX reinforcement learning rigidbody physics",
-    data_files=[
-        ("testdata", ["brax/tests/testdata/cylinder.stl"])
-    ],
 )
