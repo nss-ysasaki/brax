@@ -246,11 +246,6 @@ class AntFetch(PipelineEnv):
 
     pipeline_state = self.pipeline_init(new_q, qd)
 
-    # Randomly spawn the ball within a max distance 'd' from origin
-    max_distance = 5.0
-    ball_pos = jax.random.uniform(rng2, (3,), minval=-max_distance, maxval=max_distance)
-    pipeline_state.x.pos = pipeline_state.x.pos.at[1].set(ball_pos)
-
     obs = self._get_obs(pipeline_state)
 
     reward, done, zero = jp.zeros(3)
