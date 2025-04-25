@@ -158,7 +158,7 @@ class AntFetch(PipelineEnv):
       backend='generalized',
       **kwargs,
   ):
-    path = epath.resource_path('brax') / 'envs/assets/ant.xml'
+    path = epath.resource_path('brax') / 'envs/assets/ant_fetch.xml'
     sys = mjcf.load(path)
 
     n_frames = 5
@@ -204,16 +204,47 @@ class AntFetch(PipelineEnv):
 
   def reset(self, rng: jax.Array) -> State:
     """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jax.random.split(rng, 3)
+    rng, rng_q, rng_qd, rng_ball = jax.random.split(rng, 4)
 
-    # Set up noise for the ant's initial position and velocity
-    low, hi = -self._reset_noise_scale, self._reset_noise_scale
+    # 1) Sample ant’s q & qd as before
+    eps = self._reset_noise_scale
     q = self.sys.init_q + jax.random.uniform(
-        rng1, (self.sys.q_size(),), minval=low, maxval=hi
-    )
-    qd = hi * jax.random.normal(rng2, (self.sys.qd_size(),))
+        rng_q, (self.sys.q_size(),), minval=-eps, maxval=eps)
+    qd = eps * jax.random.normal(rng_qd, (self.sys.qd_size(),))
 
-    pipeline_state = self.pipeline_init(q, qd)
+    # 2) Sample a random ball position within radius d
+    d = 5.0  # your chosen max distance
+    # uniform in circle:
+    θ = jax.random.uniform(rng_ball, (), minval=0.0, maxval=2*jp.pi)
+    r = jax.random.uniform(rng_ball, (), minval=0.0, maxval=d)
+    x, y = r * jp.cos(θ), r * jp.sin(θ)
+    z = 0.3   # or wherever you want it height-wise
+    ball_pos = jp.array([x, y, z])
+
+    # identity quaternion for the free-joint orientation
+    ball_quat = jp.array([1.0, 0.0, 0.0, 0.0])
+
+    # 3) Locate the ball’s slice in the q-vector
+    #    - free joints each take 7 dims in q (Q_WIDTHS['f'] == 7)
+    #    - find which link index is the ball
+    ball_link_idx = list(self.sys.link_names).index('ball')
+    #    - compute offset by summing widths of earlier links
+    offsets = [ {'f':7,'1':1,'2':2,'3':3}[t]
+                for t in self.sys.link_types ]
+    q_offset = sum(offsets[:ball_link_idx])
+
+    # 4) immutably write the ball’s quat+pos into q
+    new_q = q.at[q_offset : q_offset + 7] \
+             .set(jp.concatenate([ball_quat, ball_pos]))
+
+    ## Set up noise for the ant's initial position and velocity
+    #low, hi = -self._reset_noise_scale, self._reset_noise_scale
+    #q = self.sys.init_q + jax.random.uniform(
+    #    rng1, (self.sys.q_size(),), minval=low, maxval=hi
+    #)
+    #qd = hi * jax.random.normal(rng2, (self.sys.qd_size(),))
+
+    pipeline_state = self.pipeline_init(new_q, qd)
 
     # Randomly spawn the ball within a max distance 'd' from origin
     max_distance = 5.0
