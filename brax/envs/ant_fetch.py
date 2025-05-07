@@ -149,13 +149,15 @@ class AntFetch(PipelineEnv):
       ctrl_cost_weight=0.5,
       use_contact_forces=False,
       contact_cost_weight=5e-4,
-      healthy_reward=1.0,
+      healthy_reward=0.1, # TODO: maybe make it smaller, e.g.) 0.1
       terminate_when_unhealthy=True,
       healthy_z_range=(0.2, 1.0),
       contact_force_range=(-1.0, 1.0),
       reset_noise_scale=0.1,
       exclude_current_positions_from_observation=True,
       backend='generalized',
+      target_distance_max=20,
+      target_radius=1,
       **kwargs,
   ):
     path = epath.resource_path('brax') / 'envs/assets/ant_fetch.xml'
@@ -198,54 +200,44 @@ class AntFetch(PipelineEnv):
     self._exclude_current_positions_from_observation = (
         exclude_current_positions_from_observation
     )
+    self.target_distance_max = target_distance_max
+    self.target_radius = target_radius
 
     if self._use_contact_forces:
       raise NotImplementedError('use_contact_forces not implemented.')
 
   def reset(self, rng: jax.Array) -> State:
     """Resets the environment to an initial state."""
-    rng, rng_q, rng_qd, rng_ball = jax.random.split(rng, 4)
+    rng, rng1, rng2, rng_ball = jax.random.split(rng, 4)
 
-    # 1) Sample ant’s q & qd as before
-    eps = self._reset_noise_scale
+    low, hi = -self._reset_noise_scale, self._reset_noise_scale
     q = self.sys.init_q + jax.random.uniform(
-        rng_q, (self.sys.q_size(),), minval=-eps, maxval=eps)
-    qd = eps * jax.random.normal(rng_qd, (self.sys.qd_size(),))
+        rng1, (self.sys.q_size(),), minval=low, maxval=hi
+    )
+    qd = hi * jax.random.normal(rng2, (self.sys.qd_size(),))
 
-    # 2) Sample a random ball position within radius d
-    d = 5.0  # your chosen max distance
-    # uniform in circle:
-    θ = jax.random.uniform(rng_ball, (), minval=0.0, maxval=2*jp.pi)
+    # Sample a random ball position within radius d from origin
+    d = self.target_distance_max
     r = jax.random.uniform(rng_ball, (), minval=0.0, maxval=d)
-    x, y = r * jp.cos(θ), r * jp.sin(θ)
-    z = 0.3   # or wherever you want it height-wise
+    theta = jax.random.uniform(rng_ball, (), minval=0.0, maxval=2*jp.pi)
+    x, y = r * jp.cos(theta), r * jp.sin(theta)
+    z = self.target_radius
     ball_pos = jp.array([x, y, z])
+    ball_quat = jp.array([1.0, 0.0, 0.0, 0.0]) # Identity quaternion
 
-    # identity quaternion for the free-joint orientation
-    ball_quat = jp.array([1.0, 0.0, 0.0, 0.0])
-
-    # 3) Locate the ball’s slice in the q-vector
-    #    - free joints each take 7 dims in q (Q_WIDTHS['f'] == 7)
-    #    - find which link index is the ball
-    ball_link_idx = list(self.sys.link_names).index('ball')
-    #    - compute offset by summing widths of earlier links
+    # Locate the ball’s slice in the q-vector
+    #  - free joints each take 7 dims in q (Q_WIDTHS['f'] == 7)
+    #  - find which link index is the ball
+    ball_link_idx = list(self.sys.link_names).index('ball') # FIXME: doubt this works
+    #  - compute offset by summing widths of earlier links
     offsets = [ {'f':7,'1':1,'2':2,'3':3}[t]
                 for t in self.sys.link_types ]
     q_offset = sum(offsets[:ball_link_idx])
-
-    # 4) immutably write the ball’s quat+pos into q
+    # Immutably write the ball’s quat+pos into q
     new_q = q.at[q_offset : q_offset + 7] \
              .set(jp.concatenate([ball_quat, ball_pos]))
 
-    ## Set up noise for the ant's initial position and velocity
-    #low, hi = -self._reset_noise_scale, self._reset_noise_scale
-    #q = self.sys.init_q + jax.random.uniform(
-    #    rng1, (self.sys.q_size(),), minval=low, maxval=hi
-    #)
-    #qd = hi * jax.random.normal(rng2, (self.sys.qd_size(),))
-
     pipeline_state = self.pipeline_init(new_q, qd)
-
     obs = self._get_obs(pipeline_state)
 
     reward, done, zero = jp.zeros(3)
@@ -267,23 +259,7 @@ class AntFetch(PipelineEnv):
     assert pipeline_state0 is not None
     pipeline_state = self.pipeline_step(pipeline_state0, action)
 
-    # Get the distance between the ant and the ball
-    ant_pos = pipeline_state.x.pos[0]
-    ball_pos = pipeline_state.x.pos[1]
-    distance_to_ball = math.safe_norm(ball_pos - ant_pos)
-
-    # Reward for getting closer to the ball
-    prev_distance = state.metrics['distance_to_ball']
-    distance_reward = prev_distance - distance_to_ball
-
-    # Reward for reaching the ball
-    ball_radius = 0.07  # Radius of the ball
-    reached_ball = jp.where(distance_to_ball <= ball_radius, 1.0, 0.0)
-    reached_ball_reward = reached_ball * 10.0  # Large reward
-
-    forward_reward = distance_reward + reached_ball_reward
-
-    # Reward for being healthy (not flipped)
+    # Small reward for ant being healthy (not flipped)
     min_z, max_z = self._healthy_z_range
     is_healthy = jp.where(pipeline_state.x.pos[0, 2] < min_z, 0.0, 1.0)
     is_healthy = jp.where(pipeline_state.x.pos[0, 2] > max_z, 0.0, is_healthy)
@@ -292,17 +268,30 @@ class AntFetch(PipelineEnv):
     else:
       healthy_reward = self._healthy_reward * is_healthy
 
+    # Small reward for torso moving towards target
+    ant_pos = pipeline_state.x.pos[0]
+    ant_pos_prev = pipeline_state0.x.pos[0]
+    ball_pos = pipeline_state.x.pos[1]
+
+    ant_delta = ant_pos - ant_pos_prev
+    target_rel = ball_pos - ant_pos
+    target_dist = jp.norm(target_rel)
+    target_dir = target_rel / (1e-6 + target_dist)
+    moving_to_target = .1 * jp.dot(ant_delta, target_dir)
+
+    # Big reward for reaching target (whichever direction the model is facing)
+    target_hit = target_dist < self.target_radius
+    target_hit = jp.where(target_hit, jp.float32(1), jp.float32(0))
+
     # Negative rewards
     ctrl_cost = self._ctrl_cost_weight * jp.sum(jp.square(action))
     contact_cost = 0.0
 
     obs = self._get_obs(pipeline_state)
-    reward = (
-        forward_reward + healthy_reward + distance_reward + reached_ball_reward
-        - ctrl_cost - contact_cost
-    )
+    reward = moving_to_target + target_hit - ctrl_cost - contact_cost
     done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
 
+    # Update metrics
     state.metrics.update(
         reward_forward=forward_reward,
         reward_survive=healthy_reward,
@@ -313,6 +302,23 @@ class AntFetch(PipelineEnv):
         distance_to_ball=distance_to_ball,
         forward_reward=forward_reward,
     )
+
+    # Teleport the target if the ant reaches it
+    (
+        rng,
+        ball_pos_teleported,
+        ball_quat_teleported
+    ) = self._random_target(state.info['rng'])
+    ball_pos_new = jp.where(target_hit, ball_pos_teleported, ball_pos)
+    # TODO: Update q ...using self.pipeline_init()?
+    ball_link_idx = list(self.sys.link_names).index('ball') # FIXME
+    offsets = [ {'f':7,'1':1,'2':2,'3':3}[t] for t in self.sys.link_types ]
+    q_offset = sum(offsets[:ball_link_idx])
+    new_q = q.at[q_offset : q_offset + 7] \
+             .set(jp.concatenate([ball_quat, ball_pos]))
+    pipeline_state = self.pipeline_init(new_q, qd) # ?
+
+    state.info.update(rng=rng)
 
     return state.replace(
         pipeline_state=pipeline_state, obs=obs, reward=reward, done=done
@@ -332,3 +338,16 @@ class AntFetch(PipelineEnv):
     relative_ball_pos = ball_pos - ant_pos
 
     return jp.concatenate([qpos] + [qvel] + [relative_ball_pos])
+
+  def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
+    """Returns a target location in a random circle on xz plane."""
+
+    d = self.target_distance_max
+    r = jax.random.uniform(rng, (), minval=0.0, maxval=d)
+    theta = jax.random.uniform(rng, (), minval=0.0, maxval=2*jp.pi)
+    x, y = r * jp.cos(theta), r * jp.sin(theta)
+    z = self.target_radius
+    ball_pos = jp.array([x, y, z])
+    ball_quat = jp.array([1.0, 0.0, 0.0, 0.0]) # Identity quaternion
+
+    return rng, ball_pos, ball_quat
