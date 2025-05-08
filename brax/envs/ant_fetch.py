@@ -15,6 +15,8 @@
 # pylint:disable=g-multiple-import
 """Trains an ant to fetch a ball."""
 
+from typing import Tuple
+
 from brax import base
 from brax import math
 from brax.envs.base import PipelineEnv, State
@@ -242,16 +244,16 @@ class AntFetch(PipelineEnv):
 
     reward, done, zero = jp.zeros(3)
     metrics = {
-        'reward_forward': zero,
         'reward_survive': zero,
         'reward_ctrl': zero,
         'reward_contact': zero,
         'x_position': zero,
         'y_position': zero,
         'distance_to_ball': zero,
-        'forward_reward': zero,
     }
-    return State(pipeline_state, obs, reward, done, metrics)
+    info = {'rng' : rng}
+
+    return State(pipeline_state, obs, reward, done, metrics, info)
 
   def step(self, state: State, action: jax.Array) -> State:
     """Run one timestep of the environment's dynamics."""
@@ -275,7 +277,7 @@ class AntFetch(PipelineEnv):
 
     ant_delta = ant_pos - ant_pos_prev
     target_rel = ball_pos - ant_pos
-    target_dist = jp.norm(target_rel)
+    target_dist = jp.linalg.norm(target_rel)
     target_dir = target_rel / (1e-6 + target_dist)
     moving_to_target = .1 * jp.dot(ant_delta, target_dir)
 
@@ -293,17 +295,14 @@ class AntFetch(PipelineEnv):
 
     # Update metrics
     state.metrics.update(
-        reward_forward=forward_reward,
         reward_survive=healthy_reward,
         reward_ctrl=-ctrl_cost,
         reward_contact=-contact_cost,
         x_position=pipeline_state.x.pos[0, 0],
         y_position=pipeline_state.x.pos[0, 1],
-        distance_to_ball=distance_to_ball,
-        forward_reward=forward_reward,
+        distance_to_ball=target_dist
     )
 
-    # Teleport the target if the ant reaches it
     (
         rng,
         ball_pos_teleported,
@@ -314,9 +313,12 @@ class AntFetch(PipelineEnv):
     ball_link_idx = list(self.sys.link_names).index('ball') # FIXME
     offsets = [ {'f':7,'1':1,'2':2,'3':3}[t] for t in self.sys.link_types ]
     q_offset = sum(offsets[:ball_link_idx])
-    new_q = q.at[q_offset : q_offset + 7] \
-             .set(jp.concatenate([ball_quat, ball_pos]))
-    pipeline_state = self.pipeline_init(new_q, qd) # ?
+    new_q = (
+        pipeline_state.q
+             .at[q_offset : q_offset + 7] \
+             .set(jp.concatenate([ball_quat_teleported, ball_pos_new]))
+    )
+    pipeline_state = self.pipeline_init(new_q,  pipeline_state.qd) # FIXME: ?
 
     state.info.update(rng=rng)
 
@@ -351,3 +353,4 @@ class AntFetch(PipelineEnv):
     ball_quat = jp.array([1.0, 0.0, 0.0, 0.0]) # Identity quaternion
 
     return rng, ball_pos, ball_quat
+
